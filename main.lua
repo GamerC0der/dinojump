@@ -20,11 +20,11 @@ local highScore = 0
 local gameOver = false
 local gameStarted = false
 local currentScreen = "levels"
-local levels = {true, false, false}
+local levels = {true, false, false, false}
 local currentLevel = 1
-local levelTargets = {50, 150, 250}
-local flag = {x = love.graphics.getWidth() - 100, y = ground.y - 60, width = 40, height = 60}
+local levelTargets = {50, 150, 250, 0}
 local collectedCoins = 0
+local maxProgressX = 80
 local gravity = 1000
 local jumpForce = -520
 
@@ -38,7 +38,6 @@ function love.load()
     images.cactus = love.graphics.newImage("assets/cactus.png")
     images.coin = love.graphics.newImage("assets/coin.png")
     images.lock = love.graphics.newImage("assets/lock.png")
-    images.flag = love.graphics.newImage("assets/flag.png")
     
     local targetHeight = 60
     dinoScale = targetHeight / images.dino:getHeight()
@@ -73,8 +72,8 @@ function love.update(dt)
             player.velocityX = 0
         end
         player.x = player.x + player.velocityX * dt * 200
-        if checkCollision(player, flag) then
-            restartGame()
+        if player.x > maxProgressX then
+            maxProgressX = player.x
         end
     end
 
@@ -89,11 +88,13 @@ function love.update(dt)
         end
     end
 
-        spawnTimer = spawnTimer + dt
-        if spawnTimer >= spawnInterval then
-            spawnTimer = 0
-            spawnInterval = math.random(10, 20) / 10
-            spawnObstacle()
+        if currentLevel ~= 3 then
+            spawnTimer = spawnTimer + dt
+            if spawnTimer >= spawnInterval then
+                spawnTimer = 0
+                spawnInterval = math.random(10, 20) / 10
+                spawnObstacle()
+            end
         end
 
     if currentLevel == 2 and coinTimer >= 2.0 and #coins < 6 then coinTimer = 0 table.insert(coins, {x = love.graphics.getWidth(), y = math.random(love.graphics.getHeight() * 0.5, ground.y - 20), width = 20, height = 20})
@@ -102,21 +103,48 @@ function love.update(dt)
         obstacles = {{x=300,y=ground.y-50,width=30,height=50},{x=500,y=ground.y-50,width=30,height=50}}
     end
     coinTimer = coinTimer + dt
-    if currentLevel == 3 then spawnTimer = spawnTimer + dt end
 
         for i = #obstacles, 1, -1 do
             local obs = obstacles[i]
-        if currentLevel ~= 3 then obs.x = obs.x - gameSpeed * dt end
-            if obs.x + obs.width < 0 then table.remove(obstacles, i) elseif checkCollision(player, obs) then gameOver = true if score > highScore then highScore = score end end
+            if obs then
+                if currentLevel ~= 3 then
+                    obs.x = obs.x - gameSpeed * dt
+                end
+                if obs.x + obs.width < 0 then
+                    table.remove(obstacles, i)
+                elseif checkCollision(player, obs) then
+                    if currentLevel == 3 and (maxProgressX / love.graphics.getWidth()) >= 0.9 then
+                        levels[4] = true
+                        restartGame()
+                    else
+                        gameOver = true
+                        if score > highScore then highScore = score end
+                    end
+                end
+            end
         end
         for i = #coins, 1, -1 do
             local coin = coins[i]
-        if currentLevel ~= 3 then coin.x = coin.x - gameSpeed * dt end
-        if coin.x + coin.width < 0 then table.remove(coins, i) elseif checkCollision(player, coin) then
-            if currentLevel == 3 then collectedCoins = collectedCoins + 1 else score = score + 10 end
-                table.remove(coins, i)
+            if coin then
+                if currentLevel ~= 3 then
+                    coin.x = coin.x - gameSpeed * dt
+                end
+                if coin.x + coin.width < 0 then
+                    table.remove(coins, i)
+                elseif checkCollision(player, coin) then
+                    if currentLevel == 3 then
+                        collectedCoins = collectedCoins + 1
+                        if collectedCoins >= 3 then
+                            levels[4] = true
+                            restartGame()
+                        end
+                    else
+                        score = score + 10
+                    end
+                    table.remove(coins, i)
+                end
+            end
         end
-    end
 end
 
 function love.draw()
@@ -125,11 +153,17 @@ function love.draw()
     if currentScreen == "levels" then
         love.graphics.setColor(0, 0, 0)
         love.graphics.print("LEVELS", love.graphics.getWidth() / 2 - 30, 50)
-        for i = 1, 3 do
-            local x = (love.graphics.getWidth() - 240) / 2 + (i-1) * 120
+        local levelCount = levels[4] and 4 or 3
+        for i = 1, levelCount do
+            local x = (love.graphics.getWidth() - (levelCount-1)*120) / 2 + (i-1) * 120
             local y = love.graphics.getHeight() / 2
-            love.graphics.circle("line", x, y, 30)
-            if levels[i] then love.graphics.print(i, x-5, y-10) else love.graphics.draw(images.lock, x-8, y-8, 0, 0.5, 0.5) end
+            if i < 4 then
+                love.graphics.circle("line", x, y, 30)
+                if levels[i] then love.graphics.print(i, x-5, y-10) else love.graphics.draw(images.lock, x-8, y-8, 0, 0.5, 0.5) end
+            else
+                love.graphics.rectangle("line", x-30, y-30, 60, 60, 15, 15)
+                if levels[i] then love.graphics.print("J", x-3, y-12) end
+            end
         end
         return
     end
@@ -142,17 +176,22 @@ function love.draw()
     
     for _, obs in ipairs(obstacles) do love.graphics.draw(images.cactus, obs.x, obs.y, 0, obs.width / images.cactus:getWidth(), obs.height / images.cactus:getHeight()) end
     for _, coin in ipairs(coins) do love.graphics.draw(images.coin, coin.x, coin.y, 0, coin.width / images.coin:getWidth(), coin.height / images.coin:getHeight()) end
-    if currentLevel == 3 then love.graphics.draw(images.flag, flag.x, flag.y, 0, flag.width / images.flag:getWidth(), flag.height / images.flag:getHeight()) end
     
     love.graphics.setColor(0, 0, 0)
     if currentLevel == 3 then
-        love.graphics.print("Coins: " .. collectedCoins, 10, 10)
+        local progressPercent = math.floor((maxProgressX / love.graphics.getWidth()) * 100)
+        love.graphics.print("Progress: " .. progressPercent .. "%", 10, 10)
     else
         love.graphics.print("Score: " .. math.floor(score), 10, 10)
         love.graphics.print("High Score: " .. math.floor(highScore), 10, 35)
     end
 
-    local progress = math.min(1, score / levelTargets[currentLevel])
+    local progress
+    if currentLevel == 3 then
+        progress = math.min(1, maxProgressX / love.graphics.getWidth())
+    else
+        progress = math.min(1, score / levelTargets[currentLevel])
+    end
     local barWidth = 200
     local barHeight = 20
     local barX = (love.graphics.getWidth() - barWidth) / 2
@@ -213,10 +252,11 @@ end
 
 function love.mousepressed(x, y)
     if currentScreen == "levels" then
-        for i = 1, 3 do
-            local cx = (love.graphics.getWidth() - 240) / 2 + (i-1) * 120
+        local levelCount = levels[4] and 4 or 3
+        for i = 1, levelCount do
+            local cx = (love.graphics.getWidth() - (levelCount-1)*120) / 2 + (i-1) * 120
             local cy = love.graphics.getHeight() / 2
-            if levels[i] and (x-cx)^2 + (y-cy)^2 < 900 then
+            if i < 4 and levels[i] and (x-cx)^2 + (y-cy)^2 < 900 then
                 currentLevel = i
                 currentScreen = "game"
                 break
@@ -254,7 +294,10 @@ function restartGame()
     spawnTimer = 0
     coinTimer = 0
     gameSpeed = 600
+    player.x = 80
+    maxProgressX = 80
     player.y = ground.y - player.height + 1
     player.isJumping = false
     player.velocityY = 0
+    player.velocityX = 0
 end
