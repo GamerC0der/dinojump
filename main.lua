@@ -11,8 +11,6 @@ local player = {
 local ground = { y = 0, height = 40 }
 local obstacles = {}
 local coins = {}
-local bouncers = {}
-local spikes = {}
 local spawnTimer = 0
 local coinTimer = 0
 local spawnInterval = 1.5
@@ -26,6 +24,7 @@ local levels = {true, false, false, false}
 local currentLevel = 1
 local levelTargets = {50, 150, 250, 0}
 local collectedCoins = 0
+local loadingTimer = 0
 local maxProgressX = 80
 local gravity = 1000
 local jumpForce = -520
@@ -53,13 +52,22 @@ function love.load()
 end
 
 function love.update(dt)
+    if currentScreen == "loading_endless" then
+        loadingTimer = loadingTimer + dt
+        if loadingTimer >= 8.0 then
+            currentScreen = "game"
+            loadingTimer = 0
+        end
+        return
+    end
+
     if gameOver or currentScreen ~= "game" then return end
 
-    if currentLevel ~= 3 and currentLevel ~= 4 then
+    if currentLevel ~= 3 then
         score = score + dt * 10
         gameSpeed = 600 + score * 1.0
-        if score >= levelTargets[currentLevel] then
-            if currentLevel < 4 then
+        if currentLevel ~= 4 and score >= levelTargets[currentLevel] then
+            if currentLevel < 3 then
                 levels[currentLevel + 1] = true
             end
             restartGame()
@@ -90,7 +98,7 @@ function love.update(dt)
         end
     end
 
-        if currentLevel ~= 3 and currentLevel ~= 4 then
+        if currentLevel ~= 3 then
             spawnTimer = spawnTimer + dt
             if spawnTimer >= spawnInterval then
                 spawnTimer = 0
@@ -99,51 +107,40 @@ function love.update(dt)
             end
         end
 
-    if currentLevel == 2 and coinTimer >= 2.0 and #coins < 6 then coinTimer = 0 table.insert(coins, {x = love.graphics.getWidth(), y = math.random(love.graphics.getHeight() * 0.5, ground.y - 20), width = 20, height = 20})
+    if (currentLevel == 2 or currentLevel == 4) and coinTimer >= 2.0 and #coins < 6 then coinTimer = 0 table.insert(coins, {x = love.graphics.getWidth(), y = math.random(love.graphics.getHeight() * 0.5, ground.y - 20), width = 20, height = 20})
     elseif currentLevel == 3 and #coins == 0 then
         coins = {{x=200,y=ground.y-20-love.graphics.getHeight()*0.25,width=20,height=20},{x=400,y=ground.y-20-love.graphics.getHeight()*0.25,width=20,height=20},{x=600,y=ground.y-20-love.graphics.getHeight()*0.25,width=20,height=20}}
         obstacles = {{x=300,y=ground.y-50,width=30,height=50},{x=500,y=ground.y-50,width=30,height=50}}
-    elseif currentLevel == 4 and #coins == 0 then
-        coins = {{x=200,y=ground.y-20-love.graphics.getHeight()*0.15,width=20,height=20},{x=400,y=ground.y-20-love.graphics.getHeight()*0.25,width=20,height=20},{x=600,y=ground.y-20-love.graphics.getHeight()*0.35,width=20,height=20}}
-        obstacles = {{x=300,y=ground.y-50,width=30,height=50},{x=500,y=ground.y-50,width=30,height=50},{x=700,y=ground.y-50,width=30,height=50}}
-        bouncers = {{x=350,y=ground.y-20,width=40,height=10},{x=650,y=ground.y-20,width=40,height=10}}
-        spikes = {{x=0,y=love.graphics.getHeight()*0.1,width=love.graphics.getWidth(),height=20}}
     end
     coinTimer = coinTimer + dt
 
         for i = #obstacles, 1, -1 do
             local obs = obstacles[i]
             if obs then
-                if currentLevel ~= 3 and currentLevel ~= 4 then
+                if currentLevel ~= 3 then
                     obs.x = obs.x - gameSpeed * dt
                 end
                 if obs.x + obs.width < 0 then
                     table.remove(obstacles, i)
                 elseif checkCollision(player, obs) then
-                    if currentLevel == 4 and (maxProgressX / love.graphics.getWidth()) >= 0.9 then
-                        restartGame()
-                    else
-                        gameOver = true
-                        if score > highScore then highScore = score end
-                    end
+                    gameOver = true
+                    if score > highScore then highScore = score end
                 end
             end
         end
         for i = #coins, 1, -1 do
             local coin = coins[i]
             if coin then
-                if currentLevel ~= 3 and currentLevel ~= 4 then
+                if currentLevel ~= 3 then
                     coin.x = coin.x - gameSpeed * dt
                 end
                 if coin.x + coin.width < 0 then
                     table.remove(coins, i)
                 elseif checkCollision(player, coin) then
-                    if currentLevel == 3 or currentLevel == 4 then
+                    if currentLevel == 3 then
                         collectedCoins = collectedCoins + 1
-                        if currentLevel == 3 and collectedCoins >= 3 then
+                        if collectedCoins >= 3 then
                             levels[4] = true
-                            restartGame()
-                        elseif currentLevel == 4 and collectedCoins >= 3 then
                             restartGame()
                         end
                     else
@@ -153,24 +150,47 @@ function love.update(dt)
                 end
             end
         end
-
-        for _, bouncer in ipairs(bouncers) do
-            if checkCollision(player, bouncer) and player.velocityY > 0 and player.y + player.height <= bouncer.y + bouncer.height then
-                player.isJumping = true
-                player.velocityY = jumpForce * 1.5
-            end
-        end
-
-        for _, spike in ipairs(spikes) do
-            if checkCollision(player, spike) then
-                gameOver = true
-                if score > highScore then highScore = score end
-            end
-        end
 end
 
 function love.draw()
     love.graphics.clear(1, 1, 1)
+
+    if currentScreen == "loading_endless" then
+        local centerX = love.graphics.getWidth() / 2
+        local centerY = love.graphics.getHeight() / 2
+        local progress = loadingTimer / 8.0
+        love.graphics.setColor(0, 0, 0, 0.8 * progress)
+        love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+        love.graphics.setColor(0.2, 0.8, 1, 0.6)
+        for i = 1, 5 do
+            local radius = progress * 200 + i * 30
+            local alpha = 1 - (i / 5)
+            love.graphics.setColor(0.2, 0.8, 1, alpha * 0.6)
+            love.graphics.circle("line", centerX, centerY, radius, 32)
+        end
+        love.graphics.setColor(0, 0, 0, 0.7 * progress)
+        for i = 1, 8 do
+            local angle = (i - 1) * (math.pi * 2 / 8)
+            local lineLength = progress * 300
+            love.graphics.setLineWidth(3)
+            love.graphics.line(centerX, centerY,
+                             centerX + math.cos(angle) * lineLength,
+                             centerY + math.sin(angle) * lineLength)
+        end
+        love.graphics.setColor(1, 1, 1, progress)
+        local text = "ENTERING ENDLESS MODE"
+        local font = love.graphics.getFont()
+        love.graphics.print(text, centerX - font:getWidth(text) / 2, centerY + 120)
+        for i = 1, 3 do
+            local dotProgress = (loadingTimer - (i-1) * 1.2) % 2.4
+            if dotProgress > 0 and dotProgress < 1 then
+                love.graphics.setColor(1, 1, 1, dotProgress)
+                love.graphics.circle("fill", centerX - 30 + (i-1) * 30, centerY + 150, 5, 8)
+            end
+        end
+
+        return
+    end
 
     if currentScreen == "levels" then
         love.graphics.setColor(0, 0, 0)
@@ -181,10 +201,14 @@ function love.draw()
             love.graphics.circle("line", x, y, 30)
             if levels[i] then love.graphics.print(i, x-5, y-10) else love.graphics.draw(images.lock, x-8, y-8, 0, 0.5, 0.5) end
         end
-        local x = (love.graphics.getWidth() - 2*120) / 2
+        local x = love.graphics.getWidth() / 2
         local y = love.graphics.getHeight() / 2 + 50
-        love.graphics.circle("line", x, y, 30)
-        if levels[4] then love.graphics.print("4", x-5, y-10) else love.graphics.draw(images.lock, x-8, y-8, 0, 0.5, 0.5) end
+        love.graphics.rectangle("line", x-60, y-20, 120, 40)
+        if levels[4] then
+            love.graphics.print("ENDLESS", x-47, y-8)
+        else
+            love.graphics.draw(images.lock, x-8, y-8, 0, 0.5, 0.5)
+        end
         return
     end
     
@@ -197,63 +221,55 @@ function love.draw()
     for _, obs in ipairs(obstacles) do love.graphics.draw(images.cactus, obs.x, obs.y, 0, obs.width / images.cactus:getWidth(), obs.height / images.cactus:getHeight()) end
     for _, coin in ipairs(coins) do love.graphics.draw(images.coin, coin.x, coin.y, 0, coin.width / images.coin:getWidth(), coin.height / images.coin:getHeight()) end
 
-    love.graphics.setColor(0, 1, 0)
-    for _, bouncer in ipairs(bouncers) do
-        love.graphics.rectangle("fill", bouncer.x, bouncer.y, bouncer.width, bouncer.height)
-    end
-
-    love.graphics.setColor(1, 0, 0)
-    for _, spike in ipairs(spikes) do
-        love.graphics.rectangle("fill", spike.x, spike.y, spike.width, spike.height)
-    end
-    
     love.graphics.setColor(0, 0, 0)
     if currentLevel == 3 then
         love.graphics.print("Coins: " .. collectedCoins .. "/3", 10, 10)
     elseif currentLevel == 4 then
-        love.graphics.print("Coins: " .. collectedCoins .. "/3", 10, 10)
+        love.graphics.print("ENDLESS MODE", 10, 10)
+        love.graphics.print("Score: " .. math.floor(score), 10, 35)
+        love.graphics.print("High Score: " .. math.floor(highScore), 10, 60)
     else
         love.graphics.print("Score: " .. math.floor(score), 10, 10)
         love.graphics.print("High Score: " .. math.floor(highScore), 10, 35)
     end
 
-    local progress
-    if currentLevel == 3 then
-        progress = math.min(1, collectedCoins / 3)
-    elseif currentLevel == 4 then
-        progress = math.min(1, collectedCoins / 3)
-    else
-        progress = math.min(1, score / levelTargets[currentLevel])
+    if currentLevel == 1 or currentLevel == 2 or currentLevel == 3 then
+        local progress
+        if currentLevel == 3 then
+            progress = math.min(1, collectedCoins / 3)
+        else
+            progress = math.min(1, score / levelTargets[currentLevel])
+        end
+        local barWidth = 200
+        local barHeight = 20
+        local barX = (love.graphics.getWidth() - barWidth) / 2
+        local barY = love.graphics.getHeight() - barHeight - 30
+        local cornerRadius = 10
+
+        love.graphics.setColor(0, 0, 0, 0.3)
+        love.graphics.rectangle("fill", barX + 2, barY + 2, barWidth, barHeight, cornerRadius)
+
+        love.graphics.setColor(0.2, 0.2, 0.25)
+        love.graphics.rectangle("fill", barX, barY, barWidth, barHeight, cornerRadius)
+
+        local progressWidth = barWidth * progress
+        if progressWidth > 0 then
+            love.graphics.setColor(0.2, 0.8, 0.4)
+            love.graphics.rectangle("fill", barX, barY, progressWidth, barHeight, cornerRadius)
+
+            love.graphics.setColor(0.4, 0.9, 0.6)
+            love.graphics.rectangle("fill", barX, barY, progressWidth, barHeight/2, cornerRadius, cornerRadius, 0, 0)
+        end
+
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.rectangle("line", barX, barY, barWidth, barHeight, cornerRadius)
+
+        love.graphics.setColor(1, 1, 1)
+
+        local percentText = math.floor(progress * 100) .. "%"
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(percentText, barX + barWidth / 2 - love.graphics.getFont():getWidth(percentText) / 2, barY + barHeight / 2 - love.graphics.getFont():getHeight() / 2)
     end
-    local barWidth = 200
-    local barHeight = 20
-    local barX = (love.graphics.getWidth() - barWidth) / 2
-    local barY = love.graphics.getHeight() - barHeight - 30
-    local cornerRadius = 10
-
-    love.graphics.setColor(0, 0, 0, 0.3)
-    love.graphics.rectangle("fill", barX + 2, barY + 2, barWidth, barHeight, cornerRadius)
-
-    love.graphics.setColor(0.2, 0.2, 0.25)
-    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight, cornerRadius)
-
-    local progressWidth = barWidth * progress
-    if progressWidth > 0 then
-        love.graphics.setColor(0.2, 0.8, 0.4)
-        love.graphics.rectangle("fill", barX, barY, progressWidth, barHeight, cornerRadius)
-
-        love.graphics.setColor(0.4, 0.9, 0.6)
-        love.graphics.rectangle("fill", barX, barY, progressWidth, barHeight/2, cornerRadius, cornerRadius, 0, 0)
-    end
-
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.rectangle("line", barX, barY, barWidth, barHeight, cornerRadius)
-
-    love.graphics.setColor(1, 1, 1)
-
-    local percentText = math.floor(progress * 100) .. "%"
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print(percentText, barX + barWidth / 2 - love.graphics.getFont():getWidth(percentText) / 2, barY + barHeight / 2 - love.graphics.getFont():getHeight() / 2)
     
     if gameOver then
         love.graphics.setColor(0, 0, 0, 0.7)
@@ -296,11 +312,12 @@ function love.mousepressed(x, y)
                 break
             end
         end
-        local cx = (love.graphics.getWidth() - 2*120) / 2
+        local cx = love.graphics.getWidth() / 2
         local cy = love.graphics.getHeight() / 2 + 50
-        if levels[4] and (x-cx)^2 + (y-cy)^2 < 900 then
+        if levels[4] and x >= cx-60 and x <= cx+60 and y >= cy-20 and y <= cy+20 then
             currentLevel = 4
-            currentScreen = "game"
+            currentScreen = "loading_endless"
+            loadingTimer = 0
         end
     elseif currentScreen ~= "game" then
         currentScreen = "game"
@@ -331,8 +348,6 @@ function restartGame()
     collectedCoins = 0
     obstacles = {}
     coins = {}
-    bouncers = {}
-    spikes = {}
     spawnTimer = 0
     coinTimer = 0
     gameSpeed = 600
