@@ -11,12 +11,13 @@ local ground = { y = 0, height = 40 }
 local obstacles = {}
 local spawnTimer = 0
 local spawnInterval = 1.5
-local gameSpeed = 300
+local gameSpeed = 600
 local score = 0
 local highScore = 0
 local gameOver = false
-local gravity = 1200
-local jumpForce = -500
+local gameStarted = false
+local gravity = 1000
+local jumpForce = -520
 
 local images = {}
 local dinoScale = 1
@@ -39,10 +40,10 @@ function love.load()
 end
 
 function love.update(dt)
-    if gameOver then return end
+    if gameOver or not gameStarted then return end
     
     score = score + dt * 10
-    gameSpeed = 300 + score * 0.5
+    gameSpeed = 600 + score * 1.0
     
     if player.isJumping then
         player.velocityY = player.velocityY + gravity * dt
@@ -81,6 +82,13 @@ end
 
 function love.draw()
     love.graphics.clear(1, 1, 1)
+
+    if not gameStarted then
+        love.graphics.setColor(0, 0, 0)
+        love.graphics.print("DINO RUNNER", love.graphics.getWidth() / 2 - 60, love.graphics.getHeight() / 2 - 50)
+        love.graphics.print("Tap to Start", love.graphics.getWidth() / 2 - 50, love.graphics.getHeight() / 2)
+        return
+    end
     
     love.graphics.setColor(0, 0, 0)
     love.graphics.line(0, ground.y, love.graphics.getWidth(), ground.y)
@@ -109,18 +117,23 @@ function love.draw()
 end
 
 function love.keypressed(key)
+    if not gameStarted then gameStarted = true return end
     if key == "space" or key == "up" then
         if gameOver then
             restartGame()
         elseif not player.isJumping then
             player.isJumping = true
-            player.velocityY = jumpForce
+            player.velocityY = jumpForce - 50
         end
     end
-    
+
     if key == "escape" then
         love.event.quit()
     end
+end
+
+function love.mousepressed()
+    if not gameStarted then gameStarted = true end
 end
 
 function spawnObstacle()
@@ -145,7 +158,7 @@ function restartGame()
     score = 0
     obstacles = {}
     spawnTimer = 0
-    gameSpeed = 300
+    gameSpeed = 600
     player.y = ground.y - player.height + 1
     player.isJumping = false
     player.velocityY = 0
