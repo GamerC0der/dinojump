@@ -9,7 +9,9 @@ local player = {
 
 local ground = { y = 0, height = 40 }
 local obstacles = {}
+local coins = {}
 local spawnTimer = 0
+local coinTimer = 0
 local spawnInterval = 1.5
 local gameSpeed = 600
 local score = 0
@@ -19,7 +21,7 @@ local gameStarted = false
 local currentScreen = "levels"
 local levels = {true, false, false}
 local currentLevel = 1
-local levelTargets = {50, 100, 250}
+local levelTargets = {50, 150, 250}
 local gravity = 1000
 local jumpForce = -520
 
@@ -31,6 +33,7 @@ function love.load()
     
     images.dino = love.graphics.newImage("assets/dino.png")
     images.cactus = love.graphics.newImage("assets/cactus.png")
+    images.coin = love.graphics.newImage("assets/coin.png")
     images.lock = love.graphics.newImage("assets/lock.png")
     
     local targetHeight = 60
@@ -74,21 +77,18 @@ function love.update(dt)
         spawnInterval = math.random(10, 20) / 10
         spawnObstacle()
     end
+
+    if currentLevel == 2 and coinTimer >= 2.0 and #coins < 6 then coinTimer = 0 table.insert(coins, {x = love.graphics.getWidth(), y = math.random(love.graphics.getHeight() * 0.5, ground.y - 20), width = 20, height = 20}) else coinTimer = coinTimer + dt end
     
     for i = #obstacles, 1, -1 do
         local obs = obstacles[i]
         obs.x = obs.x - gameSpeed * dt
-        
-        if obs.x + obs.width < 0 then
-            table.remove(obstacles, i)
-        end
-        
-        if checkCollision(player, obs) then
-            gameOver = true
-            if score > highScore then
-                highScore = score
-            end
-        end
+        if obs.x + obs.width < 0 then table.remove(obstacles, i) elseif checkCollision(player, obs) then gameOver = true if score > highScore then highScore = score end end
+    end
+    for i = #coins, 1, -1 do
+        local coin = coins[i]
+        coin.x = coin.x - gameSpeed * dt
+        if coin.x + coin.width < 0 then table.remove(coins, i) elseif checkCollision(player, coin) then score = score + 10 table.remove(coins, i) end
     end
 end
 
@@ -113,11 +113,8 @@ function love.draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.draw(images.dino, player.x, player.y, 0, dinoScale, dinoScale)
     
-    for _, obs in ipairs(obstacles) do
-        love.graphics.draw(images.cactus, obs.x, obs.y, 0,
-            obs.width / images.cactus:getWidth(),
-            obs.height / images.cactus:getHeight())
-    end
+    for _, obs in ipairs(obstacles) do love.graphics.draw(images.cactus, obs.x, obs.y, 0, obs.width / images.cactus:getWidth(), obs.height / images.cactus:getHeight()) end
+    for _, coin in ipairs(coins) do love.graphics.draw(images.coin, coin.x, coin.y, 0, coin.width / images.coin:getWidth(), coin.height / images.coin:getHeight()) end
     
     love.graphics.setColor(0, 0, 0)
     love.graphics.print("Score: " .. math.floor(score), 10, 10)
@@ -221,7 +218,9 @@ function restartGame()
     currentScreen = "levels"
     score = 0
     obstacles = {}
+    coins = {}
     spawnTimer = 0
+    coinTimer = 0
     gameSpeed = 600
     player.y = ground.y - player.height + 1
     player.isJumping = false
