@@ -124,23 +124,37 @@ function love.draw()
     love.graphics.print("High Score: " .. math.floor(highScore), 10, 35)
 
     local progress = math.min(1, score / levelTargets[currentLevel])
-    local barWidth = 150
-    local barHeight = 15
-    local barX = 10
-    local barY = 60
+    local barWidth = 200
+    local barHeight = 20
+    local barX = (love.graphics.getWidth() - barWidth) / 2
+    local barY = love.graphics.getHeight() - barHeight - 30
+    local cornerRadius = 10
+
+    love.graphics.setColor(0, 0, 0, 0.3)
+    love.graphics.rectangle("fill", barX + 2, barY + 2, barWidth, barHeight, cornerRadius)
+
+    love.graphics.setColor(0.2, 0.2, 0.25)
+    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight, cornerRadius)
+
+    local progressWidth = barWidth * progress
+    if progressWidth > 0 then
+        love.graphics.setColor(0.2, 0.8, 0.4)
+        love.graphics.rectangle("fill", barX, barY, progressWidth, barHeight, cornerRadius)
+
+        love.graphics.setColor(0.4, 0.9, 0.6)
+        love.graphics.rectangle("fill", barX, barY, progressWidth, barHeight/2, cornerRadius, cornerRadius, 0, 0)
+    end
 
     love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
-
-    love.graphics.setColor(0, 0.7, 0)
-    love.graphics.rectangle("fill", barX, barY, barWidth * progress, barHeight)
-
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.rectangle("line", barX, barY, barWidth, barHeight)
+    love.graphics.rectangle("line", barX, barY, barWidth, barHeight, cornerRadius)
 
     love.graphics.setColor(1, 1, 1)
+    local levelText = "Level " .. currentLevel
+    love.graphics.print(levelText, barX + barWidth / 2 - love.graphics.getFont():getWidth(levelText) / 2, barY - 25)
+
     local percentText = math.floor(progress * 100) .. "%"
-    love.graphics.print(percentText, barX + barWidth / 2 - love.graphics.getFont():getWidth(percentText) / 2, barY + barHeight + 5)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(percentText, barX + barWidth / 2 - love.graphics.getFont():getWidth(percentText) / 2, barY + barHeight / 2 - love.graphics.getFont():getHeight() / 2)
     
     if gameOver then
         love.graphics.setColor(0, 0, 0, 0.7)
