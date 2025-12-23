@@ -65,6 +65,7 @@ function love.update(dt)
 
     if currentLevel ~= 3 then
         score = score + dt * 10
+        if currentLevel ~= 4 and score > highScore then highScore = score end
         gameSpeed = 600 + score * 1.0
         if currentLevel ~= 4 and score >= levelTargets[currentLevel] then
             if currentLevel < 3 then
@@ -156,39 +157,9 @@ function love.draw()
     love.graphics.clear(1, 1, 1)
 
     if currentScreen == "loading_endless" then
-        local centerX = love.graphics.getWidth() / 2
-        local centerY = love.graphics.getHeight() / 2
         local progress = loadingTimer / 8.0
-        love.graphics.setColor(0, 0, 0, 0.8 * progress)
+        love.graphics.setColor(0, 0, 0, 0.3 * progress)
         love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-        love.graphics.setColor(0.2, 0.8, 1, 0.6)
-        for i = 1, 5 do
-            local radius = progress * 200 + i * 30
-            local alpha = 1 - (i / 5)
-            love.graphics.setColor(0.2, 0.8, 1, alpha * 0.6)
-            love.graphics.circle("line", centerX, centerY, radius, 32)
-        end
-        love.graphics.setColor(0, 0, 0, 0.7 * progress)
-        for i = 1, 8 do
-            local angle = (i - 1) * (math.pi * 2 / 8)
-            local lineLength = progress * 300
-            love.graphics.setLineWidth(3)
-            love.graphics.line(centerX, centerY,
-                             centerX + math.cos(angle) * lineLength,
-                             centerY + math.sin(angle) * lineLength)
-        end
-        love.graphics.setColor(1, 1, 1, progress)
-        local text = "ENTERING ENDLESS MODE"
-        local font = love.graphics.getFont()
-        love.graphics.print(text, centerX - font:getWidth(text) / 2, centerY + 120)
-        for i = 1, 3 do
-            local dotProgress = (loadingTimer - (i-1) * 1.2) % 2.4
-            if dotProgress > 0 and dotProgress < 1 then
-                love.graphics.setColor(1, 1, 1, dotProgress)
-                love.graphics.circle("fill", centerX - 30 + (i-1) * 30, centerY + 150, 5, 8)
-            end
-        end
-
         return
     end
 
@@ -209,6 +180,7 @@ function love.draw()
         else
             love.graphics.draw(images.lock, x-8, y-8, 0, 0.5, 0.5)
         end
+        love.graphics.print("High Score: " .. math.floor(highScore), 10, love.graphics.getHeight() - 30)
         return
     end
     
