@@ -1,0 +1,3 @@
+<script>setTimeout(()=>{window.alert=()=>{};setTimeout(()=>[...document.body.getElementsByTagName("*")].forEach(e=>e.tagName!=="CANVAS"&&(e.style.background="white",e.style.border="none",e.style.outline="none",e.style.boxShadow="none")),200),c=document.createElement("canvas"),c.width=screen.width,c.height=screen.height,c.style.cssText="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999",c.getContext("2d").fillStyle="white",c.getContext("2d").fillRect(0,0,c.width,c.height),document.body.appendChild(c),setTimeout(()=>c.remove(),600),document.getElementById("canvas").dispatchEvent(new MouseEvent("click",{bubbles:!0,clientX:360,clientY:360}))},30);
+
+</script>
